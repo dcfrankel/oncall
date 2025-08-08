@@ -13,5 +13,9 @@ if __name__ == "__main__":
         from lib.opsgenie.migrate import migrate
 
         migrate()
+    elif MIGRATING_FROM == JIRA_SERVICE_MANAGEMENT:
+        from lib.jira_service_management.migrate import migrate
+
+        migrate()
     else:
         raise ValueError("Invalid MIGRATING_FROM value")

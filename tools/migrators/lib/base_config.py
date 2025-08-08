@@ -4,8 +4,9 @@ from urllib.parse import urljoin
 PAGERDUTY = "pagerduty"
 SPLUNK = "splunk"
 OPSGENIE = "opsgenie"
+JIRA_SERVICE_MANAGEMENT = "jira_service_management"
 MIGRATING_FROM = os.getenv("MIGRATING_FROM")
-assert MIGRATING_FROM in (PAGERDUTY, SPLUNK, OPSGENIE)
+assert MIGRATING_FROM in (PAGERDUTY, SPLUNK, OPSGENIE, JIRA_SERVICE_MANAGEMENT)
 
 MODE_PLAN = "plan"
 MODE_MIGRATE = "migrate"
