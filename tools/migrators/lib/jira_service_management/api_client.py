@@ -84,10 +84,10 @@ class JiraServiceManagementAPIClient:
                 combined_response = response_json
             else:
                 # Extend the data array with new items
-                combined_response["data"].extend(response_json.get("data", []))
+                combined_response["values"].extend(response_json.get("values", []))
 
             # Check if there's more data to fetch
-            data = response_json.get("data", [])
+            data = response_json.get("values", [])
             if not data:
                 break
 
@@ -175,7 +175,7 @@ class JiraServiceManagementAPIClient:
             if not cursor:
                 break
 
-        return combined_response
+        return combined_response.get("entities", [])
 
     def _make_user_request(
         self,
@@ -298,17 +298,33 @@ class JiraServiceManagementAPIClient:
 
     def list_escalation_policies(self) -> list[dict]:
         """List all escalation policies."""
-        response = self._make_request("GET", "v1/escalations")
-        return response.get("values", [])
+        response = self.list_teams()
+        escalations = []
+
+        # Get escalations for each team
+        for team in response:
+            team_escalations = self._make_request(
+                "GET", f"/jsm/ops/api/{self.org_id}/v1/teams/{team['teamId']}/escalations"
+            )
+            team_escalations = team_escalations.get("values", [])
+            for escalation in team_escalations:
+                # Add the expected fields to each rule
+                escalation["ownerTeam"] = {
+                    "id": team["teamId"],
+                    "name": team["displayName"],
+                }
+            escalations.extend(team_escalations)
+
+        return escalations
 
     def list_teams(self) -> list[dict]:
         """List all teams."""
         response = self._make_team_request("GET", f"public/teams/v1/org/{self.org_id}/teams")
-        return response.get("entities", [])
+        return response
 
     def list_integrations(self) -> list[dict]:
         """List all integrations."""
-        response = self._make_request("GET", "v1/integrations")
+        response = self._make_request("GET", f"jsm/ops/api/{self.cloudId}/v1/integrations")
         return response.get("values", [])
 
     def list_services(self) -> list[dict]:
