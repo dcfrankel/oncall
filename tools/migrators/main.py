@@ -1,4 +1,4 @@
-from lib.base_config import MIGRATING_FROM, OPSGENIE, PAGERDUTY, SPLUNK
+from lib.base_config import MIGRATING_FROM, OPSGENIE, PAGERDUTY, SPLUNK, JIRA_SERVICE_MANAGEMENT
 
 if __name__ == "__main__":
     if MIGRATING_FROM == PAGERDUTY:

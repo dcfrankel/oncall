@@ -1,6 +1,5 @@
 from lib.common.report import ERROR_SIGN, SUCCESS_SIGN, TAB, WARNING_SIGN
 from lib.jira_service_management.config import (
-    PRESERVE_EXISTING_USER_NOTIFICATION_RULES,
     UNSUPPORTED_INTEGRATION_TO_WEBHOOKS,
 )
 from lib.jira_service_management.resources.escalation_policies import determine_policy_name
@@ -33,17 +32,9 @@ def user_report(users: list[dict]) -> str:
         if user.get("oncall_user"):
             if (
                 user["oncall_user"]["notification_rules"]
-                and PRESERVE_EXISTING_USER_NOTIFICATION_RULES
             ):
                 report.append(
                     f"{TAB}{WARNING_SIGN} {format_user(user)} (existing notification rules will be preserved)"
-                )
-            elif (
-                user["oncall_user"]["notification_rules"]
-                and not PRESERVE_EXISTING_USER_NOTIFICATION_RULES
-            ):
-                report.append(
-                    f"{TAB}{WARNING_SIGN} {format_user(user)} (existing notification rules will be deleted)"
                 )
             else:
                 report.append(f"{TAB}{SUCCESS_SIGN} {format_user(user)}")

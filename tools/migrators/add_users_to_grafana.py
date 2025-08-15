@@ -6,17 +6,24 @@ from pdpyras import APISession
 from lib.grafana.api_client import GrafanaAPIClient
 from lib.opsgenie.api_client import OpsGenieAPIClient
 from lib.splunk.api_client import SplunkOnCallAPIClient
+from lib.jira_service_management.api_client import JiraServiceManagementAPIClient
 
 MIGRATING_FROM = os.environ["MIGRATING_FROM"]
 PAGERDUTY = "pagerduty"
 SPLUNK = "splunk"
 OPSGENIE = "opsgenie"
+JIRA_SERVICE_MANAGEMENT = "jira_service_management"
 
 PAGERDUTY_API_TOKEN = os.environ.get("PAGERDUTY_API_TOKEN")
 SPLUNK_API_ID = os.environ.get("SPLUNK_API_ID")
 SPLUNK_API_KEY = os.environ.get("SPLUNK_API_KEY")
 OPSGENIE_API_KEY = os.environ.get("OPSGENIE_API_KEY")
 OPSGENIE_API_URL = os.environ.get("OPSGENIE_API_URL", "https://api.opsgenie.com/v2")
+JIRA_SERVICE_MANAGEMENT_API_KEY = os.environ.get("JIRA_SERVICE_MANAGEMENT_API_KEY")
+JIRA_SERVICE_MANAGEMENT_BASE_API_URL = os.environ.get("JIRA_SERVICE_MANAGEMENT_BASE_API_URL", "https://api.atlassian.com")
+JIRA_SERVICE_MANAGEMENT_INSTANCE_API_URL = os.environ.get("JIRA_SERVICE_MANAGEMENT_INSTANCE_API_URL")
+JIRA_SERVICE_MANAGEMENT_CLOUD_ID = os.environ.get("JIRA_SERVICE_MANAGEMENT_CLOUD_ID")
+JIRA_SERVICE_MANAGEMENT_ORG_ID = os.environ.get("JIRA_SERVICE_MANAGEMENT_ORG_ID")
 
 GRAFANA_URL = os.environ["GRAFANA_URL"]  # Example: http://localhost:3000
 GRAFANA_USERNAME = os.environ["GRAFANA_USERNAME"]
@@ -35,6 +42,13 @@ if OPSGENIE_FILTER_USERS:
     OPSGENIE_FILTER_USERS = OPSGENIE_FILTER_USERS.split(",")
 else:
     OPSGENIE_FILTER_USERS = []
+
+# Get optional filter for Jira Service Management user IDs
+JIRA_SERVICE_MANAGEMENT_FILTER_USERS = os.environ.get("JIRA_SERVICE_MANAGEMENT_FILTER_USERS", "")
+if JIRA_SERVICE_MANAGEMENT_FILTER_USERS:
+    JIRA_SERVICE_MANAGEMENT_FILTER_USERS = JIRA_SERVICE_MANAGEMENT_FILTER_USERS.split(",")
+else:
+    JIRA_SERVICE_MANAGEMENT_FILTER_USERS = []
 
 SUCCESS_SIGN = "✅"
 ERROR_SIGN = "❌"
@@ -111,6 +125,35 @@ def create_grafana_user(name: str, email: str):
         print("{} {}".format(ERROR_SIGN, response.text))
 
 
+def migrate_jira_service_management_users():
+    """
+    Migrate users from Jira Service Management to Grafana.
+    If JIRA_SERVICE_MANAGEMENT_FILTER_USERS is set, only users with IDs in that list will be migrated.
+    """
+    client = JiraServiceManagementAPIClient(
+        JIRA_SERVICE_MANAGEMENT_API_KEY, 
+        JIRA_SERVICE_MANAGEMENT_BASE_API_URL, 
+        JIRA_SERVICE_MANAGEMENT_INSTANCE_API_URL, 
+        JIRA_SERVICE_MANAGEMENT_CLOUD_ID, 
+        JIRA_SERVICE_MANAGEMENT_ORG_ID
+    )
+    all_users = client.list_users()
+
+    # Filter users if JIRA_SERVICE_MANAGEMENT_FILTER_USERS is set
+    if JIRA_SERVICE_MANAGEMENT_FILTER_USERS:
+        filtered_users = [
+            user for user in all_users if user["id"] in JIRA_SERVICE_MANAGEMENT_FILTER_USERS
+        ]
+        skipped_count = len(all_users) - len(filtered_users)
+        if skipped_count > 0:
+            print(f"Skipping {skipped_count} users not in JIRA_SERVICE_MANAGEMENT_FILTER_USERS.")
+        users_to_migrate = filtered_users
+    else:
+        users_to_migrate = all_users
+
+    for user in users_to_migrate:
+        create_grafana_user(user["fullName"], user["username"])
+
 if __name__ == "__main__":
     if MIGRATING_FROM == PAGERDUTY:
         migrate_pagerduty_users()
@@ -118,5 +161,7 @@ if __name__ == "__main__":
         migrate_splunk_users()
     elif MIGRATING_FROM == OPSGENIE:
         migrate_opsgenie_users()
+    elif MIGRATING_FROM == JIRA_SERVICE_MANAGEMENT:
+        migrate_jira_service_management_users()
     else:
         raise ValueError("Invalid value for MIGRATING_FROM")

@@ -59,7 +59,7 @@ def test_match_users_and_schedules_for_escalation_policy():
     assert policy["matched_schedules"][0]["id"] == "s1"
 
 
-@patch("lib.jira_service_management.resources.escalation_policies.JiraServiceManagementAPIClient")
+@patch("lib.jira_service_management.resources.escalation_policies.OnCallAPIClient")
 def test_migrate_escalation_policy(mock_client):
     mock_client.create.return_value = {"id": "oc1"}
 

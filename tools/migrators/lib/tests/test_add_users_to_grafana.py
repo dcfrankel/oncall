@@ -580,7 +580,7 @@ def test_migrate_all_jira_service_management_users(
 
     importlib.reload(add_users_to_grafana)
 
-    add_users_to_grafana.migrate_opsgenie_users()
+    add_users_to_grafana.migrate_jira_service_management_users()
 
     assert mock_jira_service_management_instance.list_users.called
     assert mock_grafana_instance.create_user_with_random_password.call_count == 3
@@ -653,6 +653,10 @@ def test_migrate_filtered_jira_service_management_users(
     {
         "MIGRATING_FROM": "jira_service_management",
         "JIRA_SERVICE_MANAGEMENT_API_KEY": "test_token",
+        "JIRA_SERVICE_MANAGEMENT_BASE_API_URL": "http://test.com",
+        "JIRA_SERVICE_MANAGEMENT_INSTANCE_API_URL": "http://test.com",
+        "JIRA_SERVICE_MANAGEMENT_CLOUD_ID": "test_cloud_id",
+        "JIRA_SERVICE_MANAGEMENT_ORG_ID": "test_org_id",
         "GRAFANA_URL": "http://test.com",
         "GRAFANA_USERNAME": "test_user",
         "GRAFANA_PASSWORD": "test_pass",

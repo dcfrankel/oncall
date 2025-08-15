@@ -8,7 +8,7 @@ from lib.opsgenie.config import (
     MODE_PLAN,
     UNSUPPORTED_INTEGRATION_TO_WEBHOOKS,
 )
-from lib.opsgenie.report import (
+from lib.jira_service_management.report import (
     escalation_policy_report,
     format_escalation_policy,
     format_integration,
@@ -18,25 +18,24 @@ from lib.opsgenie.report import (
     schedule_report,
     user_report,
 )
-from lib.opsgenie.resources.escalation_policies import (
+from lib.jira_service_management.resources.escalation_policies import (
     filter_escalation_policies,
     match_escalation_policy,
     match_users_and_schedules_for_escalation_policy,
     migrate_escalation_policy,
 )
-from lib.opsgenie.resources.integrations import (
+from lib.jira_service_management.resources.integrations import (
     filter_integrations,
     match_integration,
     migrate_integration,
 )
-from lib.opsgenie.resources.notification_rules import migrate_notification_rules
-from lib.opsgenie.resources.schedules import (
+from lib.jira_service_management.resources.schedules import (
     filter_schedules,
     match_schedule,
     match_users_for_schedule,
     migrate_schedule,
 )
-from lib.opsgenie.resources.users import filter_users
+from lib.jira_service_management.resources.users import filter_users
 
 
 def migrate() -> None:
@@ -99,14 +98,6 @@ def migrate() -> None:
 
     if MODE == MODE_PLAN:
         return
-
-    # Migrate users
-    if MIGRATE_USERS:
-        print("\n▶ Migrating users...")
-        for user in users:
-            if user.get("oncall_user"):
-                print(f"{TAB}Migrating {format_user(user)}...")
-                migrate_notification_rules(user)
 
     # Migrate schedules
     print("\n▶ Migrating schedules...")

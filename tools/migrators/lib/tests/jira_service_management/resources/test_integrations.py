@@ -170,7 +170,7 @@ def test_match_integration():
     assert integration.get("oncall_type") is None
 
 
-@patch("lib.jira_service_management.resources.integrations.JiraServiceManagementAPIClient")
+@patch("lib.jira_service_management.resources.integrations.OnCallAPIClient")
 def test_migrate_integration(mock_client):
     mock_client.create.return_value = {"id": "oi1"}
 
