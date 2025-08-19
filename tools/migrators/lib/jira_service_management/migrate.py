@@ -1,8 +1,8 @@
 from lib.common.report import TAB
 from lib.common.resources.users import match_user
 from lib.oncall.api_client import OnCallAPIClient
-from lib.opsgenie.api_client import OpsGenieAPIClient
-from lib.opsgenie.config import (
+from lib.jira_service_management.api_client import JiraServiceManagementAPIClient
+from lib.jira_service_management.config import (
     MIGRATE_USERS,
     MODE,
     MODE_PLAN,
@@ -39,7 +39,7 @@ from lib.jira_service_management.resources.users import filter_users
 
 
 def migrate() -> None:
-    client = OpsGenieAPIClient()
+    client = JiraServiceManagementAPIClient()
 
     if MIGRATE_USERS:
         print("▶ Fetching users...")
