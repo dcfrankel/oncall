@@ -283,14 +283,14 @@ class JiraServiceManagementAPIClient:
     def list_schedules(self) -> list[dict]:
         """List all schedules with their rotations."""
         response = self._make_request(
-            "GET", "v1/schedules", params={"expand": "rotation"}
+            "GET", f"/jsm/ops/api/{self.cloud_id}/v1/schedules", params={"expand": "rotation"}
         )
         schedules = response.get("values", [])
 
         # Fetch overrides for each schedule
         for schedule in schedules:
             overrides_response = self._make_request(
-                "GET", f"v1/schedules/{schedule['id']}/overrides"
+                "GET", f"/jsm/ops/api/{self.cloud_id}/v1/schedules/{schedule['id']}/overrides"
             )
             schedule["overrides"] = overrides_response.get("values", [])
 
@@ -304,7 +304,7 @@ class JiraServiceManagementAPIClient:
         # Get escalations for each team
         for team in response:
             team_escalations = self._make_request(
-                "GET", f"/jsm/ops/api/{self.org_id}/v1/teams/{team['teamId']}/escalations"
+                "GET", f"/jsm/ops/api/{self.cloud_id}/v1/teams/{team['teamId']}/escalations"
             )
             team_escalations = team_escalations.get("values", [])
             for escalation in team_escalations:
@@ -324,7 +324,7 @@ class JiraServiceManagementAPIClient:
 
     def list_integrations(self) -> list[dict]:
         """List all integrations."""
-        response = self._make_request("GET", f"jsm/ops/api/{self.cloudId}/v1/integrations")
+        response = self._make_request("GET", f"jsm/ops/api/{self.cloud_id}/v1/integrations")
         return response.get("values", [])
 
     def list_services(self) -> list[dict]:

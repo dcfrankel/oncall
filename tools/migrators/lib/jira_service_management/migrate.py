@@ -13,7 +13,6 @@ from lib.jira_service_management.report import (
     format_escalation_policy,
     format_integration,
     format_schedule,
-    format_user,
     integration_report,
     schedule_report,
     user_report,
