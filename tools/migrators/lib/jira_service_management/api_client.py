@@ -13,8 +13,7 @@ from lib.jira_service_management.config import (
 )
 
 class JiraServiceManagementAPIClient:
-    DEFAULT_LIMIT = 100
-
+    DEFAULT_LIMIT = 50 # Varies per API endpoint but is generally 50
 
     def __init__(
         self, 
@@ -63,8 +62,8 @@ class JiraServiceManagementAPIClient:
             return response.json()
 
         # Set default pagination parameters
-        if "limit" not in params:
-            params["limit"] = self.DEFAULT_LIMIT
+        if "size" not in params:
+            params["size"] = self.DEFAULT_LIMIT
         if "offset" not in params:
             params["offset"] = 0
 
@@ -94,8 +93,8 @@ class JiraServiceManagementAPIClient:
                 break
 
             # Check if there's a next page in the paging information
-            paging = response_json.get("paging", {})
-            next_url = paging.get("next")
+            links = response_json.get("links", {})
+            next_url = links.get("next")
             if not next_url:
                 break
 
@@ -162,12 +161,11 @@ class JiraServiceManagementAPIClient:
             response_json = response.json()
 
             # Check if there's more data to fetch
-            data = response_json.get("entities", [])
-            if not response_json or not data:
+            if not response_json:
                 break
 
             # Extend the data array with new items
-            combined_response["entities"].extend(response_json.get("entities", []))
+            combined_response.extend(response_json.get("entities", response_json))
 
             # Check if there's a next page in the paging information
             cursor = response_json.get("cursor", "")
@@ -175,7 +173,73 @@ class JiraServiceManagementAPIClient:
             if not cursor:
                 break
 
-        return combined_response.get("entities", [])
+        return combined_response
+
+    def _make_team_members_request(
+        self,
+        method: str,
+        path: str,
+        params: typing.Optional[dict] = None,
+        json: typing.Optional[dict] = None,
+        paginate: bool = True,
+    ) -> dict:
+        """
+        Make a request to the Jira Service Management API with automatic pagination handling.
+        If paginate=True and method is GET, it will automatically handle pagination
+        and combine all results into a single response.
+        """
+        if params is None:
+            params = {}
+
+        # Only handle pagination for GET requests when pagination is requested
+        if method.upper() != "GET" or not paginate:
+            response = api_call(
+                method,
+                self.base_api_url,
+                path,
+                headers=self.headers,
+                params=params,
+                json=json,
+            )
+            return response.json()
+
+        # Set default pagination parameters
+        if "first" not in params:
+            params["first"] = 50 # This is the max
+
+        # Initialize combined response
+        combined_response = []
+        cursor = None
+
+        while True:
+            response = api_call(
+                method,
+                self.base_api_url,
+                path,
+                headers=self.headers,
+                params=params,
+                json=json,
+            )
+            response_json = response.json()
+
+            # Check if there's more data to fetch
+            if not response_json:
+                break
+
+            # Extend the data array with new items
+            combined_response.extend(response_json.get("results", []))
+
+            if not response_json.get("pageInfo", {}).get("hasNextPage"):
+                break
+
+            # Check if there's a next page in the paging information
+            cursor = response_json.get("pageInfo", {}).get("endCursor")
+            if not cursor:
+                break
+
+            params["after"] = cursor
+
+        return combined_response
 
     def _make_user_request(
         self,
@@ -248,13 +312,18 @@ class JiraServiceManagementAPIClient:
         response = self._make_user_request("GET", "rest/api/3/users")
 
         teams_cache = {}
-        for user in response.get("data", []):
+        for user in response:
             # Skip inactive users and non regular users
-            if not user.get("active") or user.get("accountId") == "atlassian":
+            if not user.get("active") or user.get("accountType") != "atlassian":
                 continue
 
             # Map username to email for compatibility with matching function
-            user["email"] = user["emailAddress"]
+            try: 
+                user["email"] = user["emailAddress"]
+            except KeyError:
+                print(f"User {user['accountId']} has no email address, skipping...")
+                continue
+
             user["id"] = user["accountId"]
 
             user_account_id = user["accountId"]
@@ -262,14 +331,17 @@ class JiraServiceManagementAPIClient:
             if not teams_cache:
                 # Get teams for user if not cached
                 teams_response = self.list_teams()
-                for team in teams_response.get("entities", []):
+                for team in teams_response:
                     team_id = team["teamId"]
                     # Expected for matching function
                     team["id"] = team_id
                     teams_cache[team_id] = team
                 
                     # Get team members since this doesn't exist on the base team response
-                    teams_members_response = self._make_request("GET", f"public/teams/v1/org/{self.org_id}/teams/{team_id}/members")
+                    teams_members_response = self._make_team_members_request(
+                        "POST", 
+                        f"public/teams/v1/org/{self.org_id}/teams/{team_id}/members", 
+                    )
                     members = [member["accountId"] for member in teams_members_response.get("results", [])]
                     if user_account_id in members:
                         user["teams"].append(team)

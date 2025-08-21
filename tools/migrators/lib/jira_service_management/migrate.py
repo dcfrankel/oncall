@@ -43,6 +43,9 @@ def migrate() -> None:
     if MIGRATE_USERS:
         print("▶ Fetching users...")
         users = client.list_users()
+        if not users:
+            print("No users found for migration, check configurations...")
+            return
         users = filter_users(users)
     else:
         print("▶ Skipping user migration as MIGRATE_USERS is false...")

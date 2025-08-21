@@ -7,7 +7,7 @@ from lib.jira_service_management.resources.escalation_policies import determine_
 
 def format_user(user: dict) -> str:
     """Format user for display in reports."""
-    return f"{user['fullName']} ({user['username']})"
+    return f"{user['emailAddress']} ({user['displayName']})"
 
 
 def format_schedule(schedule: dict) -> str:
