@@ -236,7 +236,8 @@ class Override:
         end_date = datetime.fromisoformat(override["endDate"].replace("Z", "+00:00"))
 
         # Extract user ID from the user object
-        user_id = override.get("user", {}).get("id")
+        responder = override.get("responder", {})
+        user_id = responder.get("id") if responder.get("type") == "user" else ""
 
         if not user_id:
             raise ValueError(f"Could not extract user ID from override: {override}")

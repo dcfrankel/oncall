@@ -1,6 +1,8 @@
 import typing
 from urllib.parse import parse_qs, urlparse
 
+from requests.exceptions import HTTPError
+
 from lib.network import api_call
 from lib.jira_service_management.config import (
     JIRA_SERVICE_MANAGEMENT_API_KEY,
@@ -287,12 +289,17 @@ class JiraServiceManagementAPIClient:
         )
         schedules = response.get("values", [])
 
+
         # Fetch overrides for each schedule
         for schedule in schedules:
             overrides_response = self._make_request(
                 "GET", f"/jsm/ops/api/{self.cloud_id}/v1/schedules/{schedule['id']}/overrides"
             )
             schedule["overrides"] = overrides_response.get("values", [])
+
+            # Clean up deleted users
+            for rotation in schedule["rotations"]:
+                rotation["participants"] = [p for p in rotation["participants"] if p["type"] == "user" and "deleted" not in p]
 
         return schedules
 
@@ -303,9 +310,16 @@ class JiraServiceManagementAPIClient:
 
         # Get escalations for each team
         for team in response:
-            team_escalations = self._make_request(
-                "GET", f"/jsm/ops/api/{self.cloud_id}/v1/teams/{team['teamId']}/escalations"
-            )
+            try:
+                team_escalations = self._make_request(
+                    "GET", f"/jsm/ops/api/{self.cloud_id}/v1/teams/{team['teamId']}/escalations"
+                )
+            except HTTPError as e:
+                if e.response.status_code == 404:
+                    print(f"Team {team['displayName']} - {team['teamId']} not found or has no escalations, skipping...")
+                    continue
+                else:
+                    raise
             team_escalations = team_escalations.get("values", [])
             for escalation in team_escalations:
                 # Add the expected fields to each rule
