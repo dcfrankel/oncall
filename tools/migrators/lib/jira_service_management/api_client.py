@@ -13,7 +13,7 @@ from lib.jira_service_management.config import (
 )
 
 class JiraServiceManagementAPIClient:
-    DEFAULT_LIMIT = 100  # Maximum allowed by Jira Service Management API
+    DEFAULT_LIMIT = 100
 
 
     def __init__(
@@ -143,7 +143,7 @@ class JiraServiceManagementAPIClient:
             params["size"] = self.DEFAULT_LIMIT
 
         # Initialize combined response
-        combined_response = None
+        combined_response = []
         cursor = None
 
         while True:
@@ -161,19 +161,17 @@ class JiraServiceManagementAPIClient:
             )
             response_json = response.json()
 
-            if combined_response is None:
-                combined_response = response_json
-            else:
-                # Extend the data array with new items
-                combined_response["entities"].extend(response_json.get("entities", []))
-
             # Check if there's more data to fetch
             data = response_json.get("entities", [])
-            if not data:
+            if not response_json or not data:
                 break
+
+            # Extend the data array with new items
+            combined_response["entities"].extend(response_json.get("entities", []))
 
             # Check if there's a next page in the paging information
             cursor = response_json.get("cursor", "")
+
             if not cursor:
                 break
 
@@ -214,7 +212,7 @@ class JiraServiceManagementAPIClient:
             params["maxResults"] = self.DEFAULT_LIMIT
 
         # Initialize combined response
-        combined_response = None
+        combined_response = []
 
         while True:
             response = api_call(
@@ -225,18 +223,18 @@ class JiraServiceManagementAPIClient:
                 params=params,
                 json=json,
             )
+
+            # Increment startAt by maxResults to move position
+            params["startAt"] += params["maxResults"]
             response_json = response.json()
 
-            if combined_response is None:
-                combined_response = response_json
-            else:
-                # Extend the data array with new items
-                combined_response.extend(response_json)
-
             # Check if there's more data to fetch
-            data = response_json
-            if not data:
+            if not response_json:
                 break
+
+            # Extend the data array with new items
+            combined_response.extend(response_json)
+
 
         return combined_response
 
@@ -247,10 +245,14 @@ class JiraServiceManagementAPIClient:
         authentication, and only notifications for the current user are returned.
         """
         users = []
-        response = self._make_user_request("GET", "rest/api/3/users/search")
+        response = self._make_user_request("GET", "rest/api/3/users")
 
         teams_cache = {}
         for user in response.get("data", []):
+            # Skip inactive users and non regular users
+            if not user.get("active") or user.get("accountId") == "atlassian":
+                continue
+
             # Map username to email for compatibility with matching function
             user["email"] = user["emailAddress"]
             user["id"] = user["accountId"]
