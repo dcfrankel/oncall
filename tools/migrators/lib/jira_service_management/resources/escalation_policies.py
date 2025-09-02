@@ -91,7 +91,7 @@ def migrate_escalation_policy(
             continue
 
         # Convert wait duration from minutes to seconds + add wait step if there's a delay
-        delay = rule.get("delay", {}).get("timeAmount")
+        delay = rule.get("delay")
         if delay:
             wait_payload = {
                 "escalation_chain_id": chain["id"],
