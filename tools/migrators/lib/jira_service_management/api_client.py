@@ -116,7 +116,7 @@ class JiraServiceManagementAPIClient:
         params: typing.Optional[dict] = None,
         json: typing.Optional[dict] = None,
         paginate: bool = True,
-    ) -> dict:
+    ) -> list[dict]:
         """
         Make a request to the Jira Service Management API with automatic pagination handling.
         If paginate=True and method is GET, it will automatically handle pagination
