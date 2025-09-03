@@ -1,20 +1,26 @@
 from lib.common.report import TAB
 from lib.common.resources.users import match_user
 from lib.oncall.api_client import OnCallAPIClient
+from lib.grafana.api_client import SvcGrafanaAPIClient
 from lib.jira_service_management.api_client import JiraServiceManagementAPIClient
 from lib.jira_service_management.config import (
     MIGRATE_USERS,
     MODE,
     MODE_PLAN,
     UNSUPPORTED_INTEGRATION_TO_WEBHOOKS,
+    ASSOCIATE_TEAMS,
+    GRAFANA_SERVICE_ACCOUNT_TOKEN,
+    GRAFANA_URL
 )
 from lib.jira_service_management.report import (
     escalation_policy_report,
     format_escalation_policy,
     format_integration,
     format_schedule,
+    format_team,
     integration_report,
     schedule_report,
+    team_report,
     user_report,
 )
 from lib.jira_service_management.resources.escalation_policies import (
@@ -34,6 +40,7 @@ from lib.jira_service_management.resources.schedules import (
     match_users_for_schedule,
     migrate_schedule,
 )
+from lib.jira_service_management.resources.teams import filter_teams, match_team
 from lib.jira_service_management.resources.users import filter_users
 
 
@@ -68,6 +75,17 @@ def migrate() -> None:
     integrations = filter_integrations(integrations)
     oncall_integrations = OnCallAPIClient.list_all("integrations")
 
+    if ASSOCIATE_TEAMS:
+        grafana_client = SvcGrafanaAPIClient(GRAFANA_URL, GRAFANA_SERVICE_ACCOUNT_TOKEN)
+        print("▶ Fetching teams...")
+        teams = client.list_teams_with_escalations()
+        teams = filter_teams(teams)
+        oncall_teams = grafana_client.get_all_teams()["teams"]
+    else:
+        teams = []
+        oncall_teams = []
+        grafana_client = None
+
     # Match users with their Grafana OnCall counterparts
     if MIGRATE_USERS:
         print("\n▶ Matching users...")
@@ -98,8 +116,43 @@ def migrate() -> None:
         match_integration(integration, oncall_integrations)
     print(integration_report(integrations))
 
+    # Match teams with their Grafana OnCall counterparts
+    # In addition, filter Jira teams to only those with a schedule, integration, or escalation policy
+    # This is necessary because there is no easy way to tell if JSM is actually used by a given Jira team
+    if ASSOCIATE_TEAMS:
+        print("\n▶ Matching teams...")
+        filtered_teams = []
+        for team in teams:
+            has_escalations = len(team.get("escalations", [])) > 0
+            has_schedules = False
+            for schedule in schedules:
+                if schedule["teamId"]== team["teamId"]:
+                    has_schedules = True
+                    break
+
+            has_integrations = False
+            for integration in integrations:
+                if integration["teamId"]== team["teamId"]:
+                    has_integrations = True
+                    break
+
+            if not (has_escalations or has_schedules or has_integrations):
+                continue
+            filtered_teams.append(team)
+
+            match_team(team, oncall_teams)
+        print(team_report(filtered_teams))
+
     if MODE == MODE_PLAN:
         return
+        
+    if ASSOCIATE_TEAMS:
+        # Migrate users to teams
+        print("\n▶ Creating teams and migrating users to them...")
+        for team in filtered_teams:
+            print(f"{TAB}Migrating {format_team(team)}...")
+            team_id = grafana_client.idemopotently_create_team_and_add_users(team["displayName"], [user["email"] for user in users if user.get("oncall_user")])
+            team["oncall_team"]["id"] = team_id
 
     # Migrate schedules
     print("\n▶ Migrating schedules...")
@@ -147,3 +200,4 @@ def migrate() -> None:
             continue
 
         migrate_integration(integration)
+    

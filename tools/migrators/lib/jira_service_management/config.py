@@ -2,6 +2,7 @@ import os
 
 from lib.base_config import *  # noqa: F401,F403
 
+DEBUG=False
 JIRA_SERVICE_MANAGEMENT_API_KEY = os.environ["JIRA_SERVICE_MANAGEMENT_API_KEY"]
 JIRA_SERVICE_MANAGEMENT_BASE_API_URL = os.getenv(
     "JIRA_SERVICE_MANAGEMENT_BASE_API_URL", "https://api.atlassian.com"
@@ -68,3 +69,9 @@ JIRA_SERVICE_MANAGEMENT_FILTER_INTEGRATION_REGEX = os.getenv(
     "JIRA_SERVICE_MANAGEMENT_FILTER_INTEGRATION_REGEX"
 )
 
+# Link schedules, escalation chains, etc... to specific teams
+ASSOCIATE_TEAMS = os.getenv("ASSOCIATE_TEAMS", "false").lower() == "true"
+
+# Required to work with Grafana APIs
+GRAFANA_SERVICE_ACCOUNT_TOKEN = os.getenv("GRAFANA_SERVICE_ACCOUNT_TOKEN")
+GRAFANA_URL = os.getenv("GRAFANA_URL")

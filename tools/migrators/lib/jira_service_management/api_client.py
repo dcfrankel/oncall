@@ -10,6 +10,7 @@ from lib.jira_service_management.config import (
     JIRA_SERVICE_MANAGEMENT_INSTANCE_API_URL,
     JIRA_SERVICE_MANAGEMENT_CLOUD_ID,
     JIRA_SERVICE_MANAGEMENT_ORG_ID,
+    DEBUG,
 )
 
 class JiraServiceManagementAPIClient:
@@ -321,7 +322,8 @@ class JiraServiceManagementAPIClient:
             try: 
                 user["email"] = user["emailAddress"]
             except KeyError:
-                print(f"User {user['accountId']} has no email address, skipping...")
+                if DEBUG:
+                    print(f"User {user['accountId']} has no email address, skipping...")
                 continue
 
             user["id"] = user["accountId"]
@@ -390,7 +392,8 @@ class JiraServiceManagementAPIClient:
                 )
             except HTTPError as e:
                 if e.response.status_code == 404:
-                    print(f"Team {team['displayName']} - {team['teamId']} not found or has no escalations, skipping...")
+                    if DEBUG:
+                        print(f"Team {team['displayName']} - {team['teamId']} not found or has no escalations, skipping...")
                     continue
                 else:
                     raise
@@ -409,6 +412,34 @@ class JiraServiceManagementAPIClient:
         """List all teams."""
         response = self._make_team_request("GET", f"public/teams/v1/org/{self.org_id}/teams")
         return response
+
+    def list_teams_with_escalations(self) -> list[dict]:
+        """List all escalation policies."""
+        teams = self.list_teams()
+
+        # Get escalations for each team
+        for team in teams:
+            try:
+                team_escalations = self._make_request(
+                    "GET", f"/jsm/ops/api/{self.cloud_id}/v1/teams/{team['teamId']}/escalations"
+                )
+            except HTTPError as e:
+                if e.response.status_code == 404:
+                    if DEBUG:
+                        print(f"Team {team['displayName']} - {team['teamId']} not found or has no escalations, skipping...")
+                    continue
+                else:
+                    raise
+            team_escalations = team_escalations.get("values", [])
+            for escalation in team_escalations:
+                # Add the expected fields to each rule
+                escalation["ownerTeam"] = {
+                    "id": team["teamId"],
+                    "name": team["displayName"],
+                }
+            team["escalations"] = team_escalations
+
+        return teams
 
     def list_integrations(self) -> list[dict]:
         """List all integrations."""

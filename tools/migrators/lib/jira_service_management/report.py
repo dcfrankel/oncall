@@ -101,3 +101,21 @@ def integration_report(integrations: list[dict]) -> str:
         else:
             report.append(f"{TAB}{SUCCESS_SIGN} {format_integration(integration)}")
     return "\n".join(report)
+
+
+def format_team(team: dict) -> str:
+    """Format team for display in reports."""
+    return f"{team['displayName']} ({team['teamId']})"
+
+
+def team_report(teams: list[dict]) -> str:
+    """Generate report for team migration status."""
+    report = ["Team report:"]
+    for team in teams:
+        if team.get("oncall_team"):
+            report.append(
+                f"{TAB}{WARNING_SIGN} {format_team(team)} (existing team will be preserved)"
+            )
+        else:
+            report.append(f"{TAB}{SUCCESS_SIGN} {format_team(team)}")
+    return "\n".join(report)

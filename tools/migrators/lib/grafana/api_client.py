@@ -81,3 +81,19 @@ class GrafanaAPIClient:
             )
 
         return team_id
+
+class SvcGrafanaAPIClient(GrafanaAPIClient):
+    def __init__(self, base_url, service_account_token):
+        self.base_url = base_url
+        self.service_account_token = service_account_token
+
+    def _api_call(self, method: str, path: str, **kwargs):
+        return requests.request(
+            method,
+            urljoin(self.base_url, path),
+            headers={"Authorization": f"Bearer {self.service_account_token}"},
+            **kwargs,
+        )
+
+    def get_all_teams(self) -> dict:
+        return self._api_call("GET", "/api/teams/search", params={"perpage": "1000"}).json()
