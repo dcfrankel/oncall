@@ -3,6 +3,7 @@ from typing import List
 
 from lib.oncall.api_client import OnCallAPIClient
 from lib.jira_service_management.config import (
+    ASSOCIATE_TEAMS,
     JIRA_SERVICE_MANAGEMENT_FILTER_INTEGRATION_REGEX,
     JIRA_SERVICE_MANAGEMENT_FILTER_TEAM,
     JIRA_SERVICE_MANAGEMENT_TO_ONCALL_VENDOR_MAP,
@@ -24,7 +25,7 @@ def filter_integrations(integrations: list[dict]) -> list[dict]:
     return integrations
 
 
-def match_integration(integration: dict, oncall_integrations: List[dict]) -> None:
+def match_integration(integration: dict, oncall_integrations: List[dict], team_id_map: dict[str, str]) -> None:
     """
     Match Jira Service Management integration with Grafana OnCall integration + match jira service management
     integration type with Grafana OnCall integration type.
@@ -41,6 +42,7 @@ def match_integration(integration: dict, oncall_integrations: List[dict]) -> Non
     if not integration_type and UNSUPPORTED_INTEGRATION_TO_WEBHOOKS:
         integration_type = "webhook"
     integration["oncall_type"] = integration_type
+    integration["team_id"] = team_id_map.get(integration["teamId"])
 
 
 def migrate_integration(integration: dict) -> None:
@@ -56,6 +58,9 @@ def migrate_integration(integration: dict) -> None:
         "type": integration["oncall_type"],
         "team_id": None,
     }
+
+    if ASSOCIATE_TEAMS:
+        payload["team_id"] = integration.get("team_id")
 
     if integration.get("oncall_escalation_chain"):
         payload["escalation_chain_id"] = integration["oncall_escalation_chain"]["id"]

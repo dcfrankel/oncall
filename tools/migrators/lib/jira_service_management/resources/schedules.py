@@ -7,6 +7,7 @@ from uuid import uuid4
 from lib.constants import ONCALL_SHIFT_WEB_SOURCE
 from lib.oncall.api_client import OnCallAPIClient
 from lib.jira_service_management.config import (
+    ASSOCIATE_TEAMS,
     JIRA_SERVICE_MANAGEMENT_FILTER_SCHEDULE_REGEX, 
     JIRA_SERVICE_MANAGEMENT_FILTER_TEAM, 
     JIRA_SERVICE_MANAGEMENT_FILTER_USERS
@@ -62,7 +63,10 @@ def filter_schedules(schedules: list[dict]) -> list[dict]:
 
 
 def match_schedule(
-    schedule: dict, oncall_schedules: List[dict], user_id_map: Dict[str, str]
+    schedule: dict, 
+    oncall_schedules: List[dict], 
+    user_id_map: Dict[str, str], 
+    team_id_map: Dict[str, str]
 ) -> None:
     """
     Match Jira Service Management schedule with Grafana OnCall schedule.
@@ -85,7 +89,7 @@ def match_schedule(
         ]
         return
 
-    _, errors = Schedule.from_dict(schedule).to_oncall_schedule(user_id_map)
+    _, errors = Schedule.from_dict(schedule).to_oncall_schedule(user_id_map, team_id_map)
     schedule["migration_errors"] = errors
     schedule["oncall_schedule"] = oncall_schedule
 
@@ -125,6 +129,7 @@ class Schedule:
     timezone: str
     rotations: list["Rotation"]
     overrides: list["Override"]
+    team_id: str
 
     @classmethod
     def from_dict(cls, schedule: dict) -> "Schedule":
@@ -146,10 +151,13 @@ class Schedule:
             timezone=schedule["timezone"],
             rotations=rotations,
             overrides=overrides,
+            team_id=schedule["teamId"],
         )
 
     def to_oncall_schedule(
-        self, user_id_map: Dict[str, str]
+        self, 
+        user_id_map: dict[str, str], 
+        team_id_map: dict[str, str]
     ) -> tuple[Optional[dict], list[str]]:
         """
         Convert a Schedule object to an OnCall schedule.
@@ -187,20 +195,25 @@ class Schedule:
         if errors:
             return None, errors
 
-        return {
+        payload = {
             "name": self.name,
             "type": "web",
             "team_id": None,
             "time_zone": self.timezone,
             "shifts": shifts,
-        }, []
+        }
 
-    def migrate(self, user_id_map: Dict[str, str]) -> dict:
+        if ASSOCIATE_TEAMS:
+            payload["team_id"] = team_id_map.get(self.team_id)
+
+        return payload, []
+
+    def migrate(self, user_id_map: dict[str, str], team_id_map: dict[str, str]) -> dict:
         """
         Create an OnCall schedule and its shifts.
         First create the shifts, then create a schedule with shift IDs provided.
         """
-        schedule, errors = self.to_oncall_schedule(user_id_map)
+        schedule, errors = self.to_oncall_schedule(user_id_map, team_id_map)
         assert not errors, "Unexpected errors: {}".format(errors)
 
         # Create shifts in OnCall

@@ -98,8 +98,9 @@ def migrate() -> None:
     user_id_map = {
         u["id"]: u["oncall_user"]["id"] for u in users if u.get("oncall_user")
     }
+    team_id_map = {t["teamId"]: t["oncall_team"]["id"] for t in teams if t.get("oncall_team")}
     for schedule in schedules:
-        match_schedule(schedule, oncall_schedules, user_id_map)
+        match_schedule(schedule, oncall_schedules, user_id_map, team_id_map)
         match_users_for_schedule(schedule, users)
     print(schedule_report(schedules))
 
@@ -110,10 +111,11 @@ def migrate() -> None:
         match_users_and_schedules_for_escalation_policy(policy, users, schedules)
     print(escalation_policy_report(escalation_policies))
 
+
     # Match integrations with their Grafana OnCall counterparts
     print("\n▶ Matching integrations...")
     for integration in integrations:
-        match_integration(integration, oncall_integrations)
+        match_integration(integration, oncall_integrations, team_id_map)
     print(integration_report(integrations))
 
     # Match teams with their Grafana OnCall counterparts
