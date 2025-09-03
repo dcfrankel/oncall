@@ -79,7 +79,7 @@ def migrate() -> None:
         grafana_client = SvcGrafanaAPIClient(GRAFANA_URL, GRAFANA_SERVICE_ACCOUNT_TOKEN)
         print("▶ Fetching teams...")
         teams = client.list_teams_with_escalations()
-        teams = filter_teams(teams)
+        teams = filter_teams(teams, schedules, integrations)
         oncall_teams = grafana_client.get_all_teams()["teams"]
     else:
         teams = []
@@ -121,27 +121,9 @@ def migrate() -> None:
     # This is necessary because there is no easy way to tell if JSM is actually used by a given Jira team
     if ASSOCIATE_TEAMS:
         print("\n▶ Matching teams...")
-        filtered_teams = []
         for team in teams:
-            has_escalations = len(team.get("escalations", [])) > 0
-            has_schedules = False
-            for schedule in schedules:
-                if schedule["teamId"]== team["teamId"]:
-                    has_schedules = True
-                    break
-
-            has_integrations = False
-            for integration in integrations:
-                if integration["teamId"]== team["teamId"]:
-                    has_integrations = True
-                    break
-
-            if not (has_escalations or has_schedules or has_integrations):
-                continue
-            filtered_teams.append(team)
-
             match_team(team, oncall_teams)
-        print(team_report(filtered_teams))
+        print(team_report(teams))
 
     if MODE == MODE_PLAN:
         return
@@ -149,7 +131,7 @@ def migrate() -> None:
     if ASSOCIATE_TEAMS:
         # Migrate users to teams
         print("\n▶ Creating teams and migrating users to them...")
-        for team in filtered_teams:
+        for team in teams:
             print(f"{TAB}Migrating {format_team(team)}...")
             team_id = grafana_client.idemopotently_create_team_and_add_users(team["displayName"], [user["email"] for user in users if user.get("oncall_user")])
             team["oncall_team"]["id"] = team_id
