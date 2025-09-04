@@ -42,9 +42,7 @@ def match_integration(integration: dict, oncall_integrations: List[dict], team_i
     if not integration_type and UNSUPPORTED_INTEGRATION_TO_WEBHOOKS:
         integration_type = "webhook"
     integration["oncall_type"] = integration_type
-    
-    if ASSOCIATE_TEAMS:
-        integration["team_id"] = team_id_map.get(integration["teamId"])
+    integration["team_id"] = team_id_map.get(integration["teamId"])
 
 
 def migrate_integration(integration: dict) -> None:
