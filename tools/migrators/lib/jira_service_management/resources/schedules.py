@@ -108,14 +108,14 @@ def match_users_for_schedule(schedule: dict, users: List[dict]) -> None:
                         schedule["matched_users"].append(user)
 
 
-def migrate_schedule(schedule: dict, user_id_map: Dict[str, str]) -> None:
+def migrate_schedule(schedule: dict, user_id_map: Dict[str, str], team_id_map: Dict[str, str]) -> None:
     """
     Migrate Jira Service Management schedule to Grafana OnCall.
     """
     if schedule["oncall_schedule"]:
         OnCallAPIClient.delete(f"schedules/{schedule['oncall_schedule']['id']}")
 
-    schedule["oncall_schedule"] = Schedule.from_dict(schedule).migrate(user_id_map)
+    schedule["oncall_schedule"] = Schedule.from_dict(schedule).migrate(user_id_map, team_id_map)
 
 
 @dataclass
@@ -166,6 +166,8 @@ class Schedule:
         shifts = []
         errors = []
 
+        oncall_team_id = team_id_map.get(self.team_id)
+
         for rotation in self.rotations:
             # Check if all users in the rotation exist in OnCall
             missing_user_ids = [
@@ -204,7 +206,7 @@ class Schedule:
         }
 
         if ASSOCIATE_TEAMS:
-            payload["team_id"] = team_id_map.get(self.team_id)
+            payload["team_id"] = oncall_team_id
 
         return payload, []
 
@@ -266,7 +268,7 @@ class Override:
         duration = int((self.end_date - self.start_date).total_seconds())
         oncall_user_id = user_id_map[self.user_id]
 
-        return {
+        payload = {
             "name": f"Override-{uuid4().hex[:8]}",
             "type": "override",
             "team_id": None,
@@ -278,6 +280,7 @@ class Override:
             "source": ONCALL_SHIFT_WEB_SOURCE,
         }
 
+        return payload
 
 @dataclass
 class Rotation:

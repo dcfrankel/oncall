@@ -72,7 +72,7 @@ class GrafanaAPIClient:
         for user_email in user_emails:
             for grafana_user in grafana_users:
                 if grafana_user["email"] == user_email:
-                    grafana_user_id_to_email_map[grafana_user["id"]] = user_email
+                    grafana_user_id_to_email_map[grafana_user.get("id", grafana_user["userId"])] = user_email
                     break
 
         for user_id in grafana_user_id_to_email_map.keys():
@@ -97,3 +97,6 @@ class SvcGrafanaAPIClient(GrafanaAPIClient):
 
     def get_all_teams(self) -> dict:
         return self._api_call("GET", "/api/teams/search", params={"perpage": "1000"}).json()
+
+    def get_all_users(self):
+        return self._api_call("GET", "/api/org/users").json()

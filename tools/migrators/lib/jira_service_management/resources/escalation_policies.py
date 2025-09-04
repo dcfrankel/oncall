@@ -3,6 +3,7 @@ from typing import List
 
 from lib.oncall.api_client import OnCallAPIClient
 from lib.jira_service_management.config import (
+    ASSOCIATE_TEAMS,
     JIRA_SERVICE_MANAGEMENT_FILTER_ESCALATION_POLICY_REGEX,
     JIRA_SERVICE_MANAGEMENT_FILTER_TEAM,
 )
@@ -69,7 +70,9 @@ def match_users_and_schedules_for_escalation_policy(
 
 
 def migrate_escalation_policy(
-    policy: dict, users: List[dict], schedules: List[dict]
+    policy: dict, users: List[dict],
+    schedules: List[dict], 
+    team_id_map: dict[str, str]
 ) -> None:
     """
     Migrate Jira Service Management escalation policy to Grafana OnCall.
@@ -81,6 +84,8 @@ def migrate_escalation_policy(
 
     # Create new escalation chain
     chain_payload = {"name": determine_policy_name(policy), "team_id": None}
+    if ASSOCIATE_TEAMS:
+        chain_payload["team_id"] = team_id_map.get(policy["ownerTeam"]["id"])
     chain = OnCallAPIClient.create("escalation_chains", chain_payload)
     policy["oncall_escalation_chain"] = chain
 

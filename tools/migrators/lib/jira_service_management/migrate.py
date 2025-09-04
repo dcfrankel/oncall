@@ -1,3 +1,4 @@
+from re import A
 from lib.common.report import TAB
 from lib.common.resources.users import match_user
 from lib.oncall.api_client import OnCallAPIClient
@@ -80,7 +81,9 @@ def migrate() -> None:
         print("▶ Fetching teams...")
         teams = client.list_teams_with_escalations()
         teams = filter_teams(teams, schedules, integrations)
-        oncall_teams = grafana_client.get_all_teams()["teams"]
+        # These are oddly distinct from grafana teams, even though they are unified in the web UI
+        # They also cannot be created directly, and map 1 to 1 with grafana teams
+        oncall_teams = OnCallAPIClient.list_all("teams")
     else:
         teams = []
         oncall_teams = []
@@ -93,12 +96,20 @@ def migrate() -> None:
             match_user(user, oncall_users)
         print(user_report(users))
 
+    # Match teams with their Grafana OnCall counterparts
+    if ASSOCIATE_TEAMS:
+        print("\n▶ Matching teams...")
+        for team in teams:
+             match_team(team, oncall_teams)
+        print(team_report(teams))
+
     # Match schedules with their Grafana OnCall counterparts
     print("\n▶ Matching schedules...")
     user_id_map = {
         u["id"]: u["oncall_user"]["id"] for u in users if u.get("oncall_user")
     }
     team_id_map = {t["teamId"]: t["oncall_team"]["id"] for t in teams if t.get("oncall_team")}
+    print(team_id_map)
     for schedule in schedules:
         match_schedule(schedule, oncall_schedules, user_id_map, team_id_map)
         match_users_for_schedule(schedule, users)
@@ -118,14 +129,6 @@ def migrate() -> None:
         match_integration(integration, oncall_integrations, team_id_map)
     print(integration_report(integrations))
 
-    # Match teams with their Grafana OnCall counterparts
-    # In addition, filter Jira teams to only those with a schedule, integration, or escalation policy
-    # This is necessary because there is no easy way to tell if JSM is actually used by a given Jira team
-    if ASSOCIATE_TEAMS:
-        print("\n▶ Matching teams...")
-        for team in teams:
-            match_team(team, oncall_teams)
-        print(team_report(teams))
 
     if MODE == MODE_PLAN:
         return
@@ -143,7 +146,7 @@ def migrate() -> None:
     for schedule in schedules:
         if not schedule.get("migration_errors"):
             print(f"{TAB}Migrating {format_schedule(schedule)}...")
-            migrate_schedule(schedule, user_id_map)
+            migrate_schedule(schedule, user_id_map, team_id_map)
 
     # Migrate escalation policies
     print("\n▶ Migrating escalation policies...")
@@ -162,7 +165,7 @@ def migrate() -> None:
         else:
             print(f"{TAB}Migrating {format_escalation_policy(policy)}...")
 
-        migrate_escalation_policy(policy, users, schedules)
+        migrate_escalation_policy(policy, users, schedules, team_id_map)
 
     # Migrate integrations
     print("\n▶ Migrating integrations...")
