@@ -39,6 +39,7 @@ JIRA_SERVICE_MANAGEMENT_TO_ONCALL_VENDOR_MAP = {
     "UptimeRobot": "uptimerobot",
     "Webhook": "webhook",
     "Zabbix": "zabbix",
+    "Honeycomb": "formatted_webhook",
 }
 
 # Set to true to migrate unsupported integrations to OnCall webhook integration
