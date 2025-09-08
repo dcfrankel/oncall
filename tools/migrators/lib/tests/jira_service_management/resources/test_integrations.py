@@ -3,7 +3,7 @@ from unittest.mock import patch
 from lib.jira_service_management.resources.integrations import (
     filter_integrations,
     match_integration,
-    migrate_integration,
+    migrate_integration_and_routes,
 )
 
 
@@ -183,7 +183,7 @@ def test_migrate_integration(mock_client):
         "oncall_escalation_chain": {"id": "oc1"},
     }
 
-    migrate_integration(integration)
+    migrate_integration_and_routes(integration)
 
     # Verify integration creation
     mock_client.delete.assert_called_once_with("integrations/oi_old")

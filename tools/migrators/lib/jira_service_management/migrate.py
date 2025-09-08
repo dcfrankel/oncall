@@ -33,7 +33,7 @@ from lib.jira_service_management.resources.escalation_policies import (
 from lib.jira_service_management.resources.integrations import (
     filter_integrations,
     match_integration,
-    migrate_integration,
+    migrate_integration_and_routes,
 )
 from lib.jira_service_management.resources.schedules import (
     filter_schedules,
@@ -109,7 +109,6 @@ def migrate() -> None:
         u["id"]: u["oncall_user"]["id"] for u in users if u.get("oncall_user")
     }
     team_id_map = {t["teamId"]: t["oncall_team"]["id"] for t in teams if t.get("oncall_team")}
-    print(team_id_map)
     for schedule in schedules:
         match_schedule(schedule, oncall_schedules, user_id_map, team_id_map)
         match_users_for_schedule(schedule, users)
@@ -186,5 +185,5 @@ def migrate() -> None:
             )
             continue
 
-        migrate_integration(integration)
+        migrate_integration_and_routes(integration)
     

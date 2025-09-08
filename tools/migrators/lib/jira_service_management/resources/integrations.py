@@ -45,7 +45,7 @@ def match_integration(integration: dict, oncall_integrations: List[dict], team_i
     integration["team_id"] = team_id_map.get(integration["teamId"])
 
 
-def migrate_integration(integration: dict) -> None:
+def migrate_integration_and_routes(integration: dict) -> None:
     """Migrate Jira Service Management integration to Grafana OnCall."""
     if integration["oncall_integration"]:
         OnCallAPIClient.delete(
@@ -62,7 +62,30 @@ def migrate_integration(integration: dict) -> None:
     if ASSOCIATE_TEAMS:
         payload["team_id"] = integration.get("team_id")
 
-    if integration.get("oncall_escalation_chain"):
-        payload["escalation_chain_id"] = integration["oncall_escalation_chain"]["id"]
-
+    escalation_chain_id = integration.get("oncall_escalation_chain", {}).get("id")
+    payload["escalation_chain_id"] = escalation_chain_id
+ 
     integration["oncall_integration"] = OnCallAPIClient.create("integrations", payload)
+
+    if integration["oncall_type"] == "alertmanager":
+        # Delete existing routes
+        routes = OnCallAPIClient.list_all(
+            f"routes/?integration_id={integration['oncall_integration']['id']}"
+        )
+        for route in routes:
+            if route["is_the_last_route"]:
+                # Can't delete the default route
+                continue
+            OnCallAPIClient.delete(f"routes/{route['id']}")
+
+        # Create standard routes for alertmanager integrations
+        route = { 
+                "integration_id": integration["oncall_integration"]["id"],
+                "routing_type": "jinja2",
+                "escalation_chain_id": escalation_chain_id,
+                "routing_regex": "{% set groupLabels = payload.get(\"groupLabels\", {}) -%}\n{% set severity = groupLabels.severity -%}\n{{ severity == \"critical\" }}",
+                "position": 0,
+                "is_the_last_route": False
+        }
+
+        OnCallAPIClient.create("routes", route)
