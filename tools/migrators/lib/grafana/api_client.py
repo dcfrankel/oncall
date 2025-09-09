@@ -75,10 +75,13 @@ class GrafanaAPIClient:
                     grafana_user_id_to_email_map[grafana_user.get("id", grafana_user["userId"])] = user_email
                     break
 
-        for user_id in grafana_user_id_to_email_map.keys():
-            self._api_call(
-                "POST", f"/api/teams/{team_id}/members", json={"userId": user_id}
-            )
+        for user_id, email in grafana_user_id_to_email_map.items():
+            try:
+                self._api_call(
+                    "POST", f"/api/teams/{team_id}/members", json={"userId": user_id}
+                )
+            except Exception as e:
+                print(f"Error adding user {email} with ID {user_id} to team {team_id}: {e}")
 
         return team_id
 
