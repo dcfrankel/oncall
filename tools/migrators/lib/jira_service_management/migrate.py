@@ -137,7 +137,12 @@ def migrate() -> None:
         print("\n▶ Creating teams and migrating users to them...")
         for team in teams:
             print(f"{TAB}Migrating {format_team(team)}...")
-            team_id = grafana_client.idemopotently_create_team_and_add_users(team["displayName"], [user["email"] for user in users if user.get("oncall_user")])
+            team_members = []
+            for user in users:
+                user_team_ids = [t["id"] for t in user["teams"]]
+                if user.get("oncall_user") and team["teamId"] in user_team_ids:
+                    team_members.append(user["email"])
+            team_id = grafana_client.idemopotently_create_team_and_add_users(team["displayName"], team_members)
             if team["oncall_team"]:
                 team["oncall_team"]["id"] = team_id
             else:
