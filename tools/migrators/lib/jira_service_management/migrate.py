@@ -138,7 +138,12 @@ def migrate() -> None:
         for team in teams:
             print(f"{TAB}Migrating {format_team(team)}...")
             team_id = grafana_client.idemopotently_create_team_and_add_users(team["displayName"], [user["email"] for user in users if user.get("oncall_user")])
-            team["oncall_team"]["id"] = team_id
+            if team["oncall_team"]:
+                team["oncall_team"]["id"] = team_id
+            else:
+                team["oncall_team"] = {
+                    "id": team_id,
+                }
 
     # Migrate schedules
     print("\n▶ Migrating schedules...")
